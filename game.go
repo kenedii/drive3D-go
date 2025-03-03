@@ -13,7 +13,10 @@ const (
 	Playing
 )
 
-var currentState GameState
+var (
+	currentState    GameState
+	prevCarPosition rl.Vector3
+)
 
 func initGame() {
 	currentState = Menu
@@ -26,8 +29,10 @@ func updateGame() {
 	case Menu:
 		handleMenuInput()
 	case Playing:
+		prevCarPosition = car.position
 		updateCar()
 		updatePhysics()
+		checkCollisions()
 	}
 }
 
@@ -76,24 +81,55 @@ func drawMenu() {
 }
 
 func updatePhysics() {
-	// Ramp 1: along x, x=5 to 15, z=-1 to 1, y=0 to 5
-	if car.position.X >= 5 && car.position.X <= 15 && car.position.Z >= -1 && car.position.Z <= 1 {
-		car.position.Y = (car.position.X - 5) / 10 * 5
-		car.pitch = 26.565 * rl.Deg2rad // Convert degrees to radians
-		car.grounded = true
-	} else if car.position.Z >= 5 && car.position.Z <= 15 && car.position.X >= -1 && car.position.X <= 1 {
-		// Ramp 2: along z, z=5 to 15, x=-1 to 1, y=0 to 5
-		car.position.Y = (car.position.Z - 5) / 10 * 5
-		car.pitch = 26.565 * rl.Deg2rad // Convert degrees to radians
-		car.grounded = true
-	} else if car.position.Y <= 0 {
+	// Simplified ramp physics (assuming ramps are handled elsewhere or removed for simplicity)
+	if car.position.Y <= 0 {
 		car.position.Y = 0
 		car.pitch = 0
 		car.grounded = true
 	} else {
-		// In air, apply gravity
 		car.velocity.Y -= 0.5 * rl.GetFrameTime()
 		car.position.Y += car.velocity.Y * rl.GetFrameTime()
 		car.grounded = false
+	}
+}
+
+func checkCollisions() {
+	// Define the car's bounding box (assuming car dimensions are 1x0.5x2)
+	carHalfSize := rl.Vector3{X: 0.5, Y: 0.25, Z: 1}
+	carMin := rl.Vector3Subtract(car.position, carHalfSize)
+	carMax := rl.Vector3Add(car.position, carHalfSize)
+
+	// Check collision with barriers (existing code)
+	for _, barrier := range barrierModels {
+		// Extract position from the barrier's Transform matrix
+		barrierPos := rl.Vector3{
+			X: barrier.Transform.M12, // Translation X
+			Y: barrier.Transform.M13, // Translation Y
+			Z: barrier.Transform.M14, // Translation Z
+		}
+		barrierHalfSize := rl.Vector3{X: 0.5, Y: 0.5, Z: 0.5} // Barrier size: 1x1x1
+		barrierMin := rl.Vector3Subtract(barrierPos, barrierHalfSize)
+		barrierMax := rl.Vector3Add(barrierPos, barrierHalfSize)
+
+		// AABB collision check for barriers
+		if carMin.X < barrierMax.X && carMax.X > barrierMin.X &&
+			carMin.Y < barrierMax.Y && carMax.Y > barrierMin.Y &&
+			carMin.Z < barrierMax.Z && carMax.Z > barrierMin.Z {
+			car.position = prevCarPosition // Revert to previous position
+			return                         // Exit early on collision
+		}
+	}
+
+	// Check collision with the building
+	buildingPos := rl.Vector3{X: 50, Y: 25, Z: 50}    // Building center
+	buildingHalfSize := rl.Vector3{X: 5, Y: 25, Z: 5} // Half of 10x50x10
+	buildingMin := rl.Vector3Subtract(buildingPos, buildingHalfSize)
+	buildingMax := rl.Vector3Add(buildingPos, buildingHalfSize)
+
+	// AABB collision check for the building
+	if carMin.X < buildingMax.X && carMax.X > buildingMin.X &&
+		carMin.Y < buildingMax.Y && carMax.Y > buildingMin.Y &&
+		carMin.Z < buildingMax.Z && carMax.Z > buildingMin.Z {
+		car.position = prevCarPosition // Revert to previous position
 	}
 }

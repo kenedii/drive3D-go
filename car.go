@@ -17,7 +17,7 @@ type Car struct {
 	model    rl.Model
 }
 
-var car Car // Global car variable, assuming it’s used across files
+var car Car // Single global declaration here
 
 func initCar() {
 	car = Car{
@@ -32,7 +32,6 @@ func initCar() {
 }
 
 func updateCar() {
-	// Acceleration
 	if rl.IsKeyDown(rl.KeyUp) {
 		car.speed += 5 * rl.GetFrameTime()
 		if car.speed > 10 {
@@ -44,7 +43,6 @@ func updateCar() {
 			car.speed = -5
 		}
 	} else {
-		// Deceleration
 		if car.speed > 0 {
 			car.speed -= 2 * rl.GetFrameTime()
 			if car.speed < 0 {
@@ -58,22 +56,20 @@ func updateCar() {
 		}
 	}
 
-	// Steering: fixed to turn correctly
 	if rl.IsKeyDown(rl.KeyLeft) {
-		car.steering -= 2 * rl.GetFrameTime() // Decrease steering for left turn
+		car.steering -= 2 * rl.GetFrameTime()
 		if car.steering < -1 {
 			car.steering = -1
 		}
 	} else if rl.IsKeyDown(rl.KeyRight) {
-		car.steering += 2 * rl.GetFrameTime() // Increase steering for right turn
+		car.steering += 2 * rl.GetFrameTime()
 		if car.steering > 1 {
 			car.steering = 1
 		}
 	} else {
-		car.steering *= 0.9 // Gradually reduce steering when no key is pressed
+		car.steering *= 0.9
 	}
 
-	// Update orientation and position
 	car.yaw += car.steering * rl.GetFrameTime()
 	forward := rl.Vector3{
 		X: float32(math.Cos(float64(car.yaw))) * float32(math.Cos(float64(car.pitch))),
