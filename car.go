@@ -17,7 +17,7 @@ type Car struct {
 	model    rl.Model
 }
 
-var car Car // Single global declaration here
+var car Car // Global car variable
 
 func initCar() {
 	car = Car{
