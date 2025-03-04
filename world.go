@@ -20,6 +20,15 @@ const (
 	Snow       = 5
 )
 
+// Collider represents a simple spherical collider.
+type Collider struct {
+	Position rl.Vector3
+	Radius   float32
+}
+
+// Global list of colliders in the world.
+var colliders []Collider
+
 // Coord represents a chunk's position in the world
 type Coord struct {
 	X, Y int
@@ -32,7 +41,6 @@ type Chunk struct {
 	Models []rl.Model
 }
 
-// Global variables
 var (
 	chunks map[Coord]*Chunk
 	// Adjacency rules: each type lists allowed neighboring types
@@ -66,9 +74,15 @@ func setAlbedoColor(model *rl.Model, color rl.Color) {
 	model.Materials = &mat
 }
 
+// addCollider adds a collider to the global list.
+func addCollider(pos rl.Vector3, radius float32) {
+	colliders = append(colliders, Collider{Position: pos, Radius: radius})
+}
+
 // Initialize the world with an initial 5x5 grid around (0,0)
 func initWorld() {
 	chunks = make(map[Coord]*Chunk)
+	colliders = make([]Collider, 0) // reset colliders
 	// Generate the initial 5x5 grid around (0,0)
 	for i := -2; i <= 2; i++ {
 		for j := -2; j <= 2; j++ {
@@ -90,26 +104,18 @@ func getChunkCoord(pos rl.Vector3) Coord {
 func determineChunkType(i, j int) int {
 	neighbors := []Coord{{i - 1, j}, {i + 1, j}, {i, j - 1}, {i, j + 1}}
 	existingNeighbors := make([]int, 0)
-
-	// Collect types of existing neighboring chunks
 	for _, n := range neighbors {
 		if chunk, exists := chunks[n]; exists {
 			existingNeighbors = append(existingNeighbors, chunk.Type)
 		}
 	}
-
-	// If no neighbors, choose randomly
 	if len(existingNeighbors) == 0 {
 		return rand.Intn(6) // 0 to 5
 	}
-
-	// Start with allowed types from the first neighbor
 	allowed := make(map[int]bool)
 	for _, t := range allowedNeighbors[existingNeighbors[0]] {
 		allowed[t] = true
 	}
-
-	// Intersect with allowed types from other neighbors
 	for _, neighbor := range existingNeighbors[1:] {
 		neighborAllowed := allowedNeighbors[neighbor]
 		newAllowed := make(map[int]bool)
@@ -120,25 +126,20 @@ func determineChunkType(i, j int) int {
 		}
 		allowed = newAllowed
 	}
-
-	// Convert allowed types to a slice for random selection
 	types := make([]int, 0, len(allowed))
 	for t := range allowed {
 		types = append(types, t)
 	}
-
-	// Fallback to Highway if no valid types (shouldn't happen due to Highway's flexibility)
 	if len(types) == 0 {
 		return Highway
 	}
-
 	return types[rand.Intn(len(types))]
 }
 
-// Generate a chunk's models based on its type
+// generateChunk creates a chunk and its objects.
+// It uses checks so objects are not placed on the central road.
 func generateChunk(i, j int) {
 	coord := Coord{i, j}
-	// Avoid regenerating an already existing chunk
 	if _, exists := chunks[coord]; exists {
 		return
 	}
@@ -153,18 +154,16 @@ func generateChunk(i, j int) {
 	groundModel.Transform = groundTransform
 	setAlbedoColor(&groundModel, typeColors[chunk.Type])
 	chunk.Models = append(chunk.Models, groundModel)
+	// (We assume ground is not collidable.)
 
-	// Define road width
 	roadWidth := float32(5.0)
-
-	// "+" shaped road (horizontal and vertical)
+	// Main "+" shaped road
 	roadMeshH := rl.GenMeshPlane(CHUNK_SIZE, roadWidth, 1, 1)
 	roadModelH := rl.LoadModelFromMesh(roadMeshH)
 	roadTransformH := rl.MatrixTranslate(posX+CHUNK_SIZE/2, 0.01, posZ+CHUNK_SIZE/2)
 	roadModelH.Transform = roadTransformH
 	setAlbedoColor(&roadModelH, rl.DarkGray)
 	chunk.Models = append(chunk.Models, roadModelH)
-
 	roadMeshV := rl.GenMeshPlane(roadWidth, CHUNK_SIZE, 1, 1)
 	roadModelV := rl.LoadModelFromMesh(roadMeshV)
 	roadTransformV := rl.MatrixTranslate(posX+CHUNK_SIZE/2, 0.01, posZ+CHUNK_SIZE/2)
@@ -172,36 +171,29 @@ func generateChunk(i, j int) {
 	setAlbedoColor(&roadModelV, rl.DarkGray)
 	chunk.Models = append(chunk.Models, roadModelV)
 
-	// For the central chunk (0,0), only ground and the main road are needed.
+	// For the central chunk (0,0), only ground and main road.
 	if i == 0 && j == 0 {
 		chunks[coord] = chunk
 		return
 	}
 
-	// Backroads for City and Commercial (forming a square)
+	// Backroads for City and Commercial
 	if chunk.Type == City || chunk.Type == Commercial {
-		// Top horizontal backroad
 		roadModelTop := rl.LoadModelFromMesh(roadMeshH)
 		roadTopTransform := rl.MatrixTranslate(posX+CHUNK_SIZE/2, 0.01, posZ+CHUNK_SIZE-roadWidth)
 		roadModelTop.Transform = roadTopTransform
 		setAlbedoColor(&roadModelTop, rl.DarkGray)
 		chunk.Models = append(chunk.Models, roadModelTop)
-
-		// Bottom horizontal backroad
 		roadModelBottom := rl.LoadModelFromMesh(roadMeshH)
 		roadBottomTransform := rl.MatrixTranslate(posX+CHUNK_SIZE/2, 0.01, posZ+roadWidth)
 		roadModelBottom.Transform = roadBottomTransform
 		setAlbedoColor(&roadModelBottom, rl.DarkGray)
 		chunk.Models = append(chunk.Models, roadModelBottom)
-
-		// Left vertical backroad
 		roadModelLeft := rl.LoadModelFromMesh(roadMeshV)
 		roadLeftTransform := rl.MatrixTranslate(posX+roadWidth, 0.01, posZ+CHUNK_SIZE/2)
 		roadModelLeft.Transform = roadLeftTransform
 		setAlbedoColor(&roadModelLeft, rl.DarkGray)
 		chunk.Models = append(chunk.Models, roadModelLeft)
-
-		// Right vertical backroad
 		roadModelRight := rl.LoadModelFromMesh(roadMeshV)
 		roadRightTransform := rl.MatrixTranslate(posX+CHUNK_SIZE-roadWidth, 0.01, posZ+CHUNK_SIZE/2)
 		roadModelRight.Transform = roadRightTransform
@@ -209,106 +201,129 @@ func generateChunk(i, j int) {
 		chunk.Models = append(chunk.Models, roadModelRight)
 	}
 
-	// Type-specific objects with seeded randomness
+	// Seeded randomness for object placement.
 	h := fnv.New64a()
 	h.Write([]byte(fmt.Sprintf("%d,%d", i, j)))
 	seed := h.Sum64()
 	chunkRand := rand.New(rand.NewSource(int64(seed)))
 
-	switch chunk.Type {
-	case City:
+	// City: Spawn buildings, avoiding the central road.
+	if chunk.Type == City {
 		for k := 0; k < 5; k++ {
 			bx := posX + chunkRand.Float32()*CHUNK_SIZE
 			bz := posZ + chunkRand.Float32()*CHUNK_SIZE
-			if float32(math.Abs(float64(bx-(posX+CHUNK_SIZE/2)))) > roadWidth &&
-				float32(math.Abs(float64(bz-(posZ+CHUNK_SIZE/2)))) > roadWidth {
+			// Only spawn if far enough from center (road area)
+			if math.Abs(float64(bx-(posX+CHUNK_SIZE/2))) > float64(roadWidth) &&
+				math.Abs(float64(bz-(posZ+CHUNK_SIZE/2))) > float64(roadWidth) {
 				buildingMesh := rl.GenMeshCube(10, 50, 10)
 				buildingModel := rl.LoadModelFromMesh(buildingMesh)
 				buildingTransform := rl.MatrixTranslate(bx, 25, bz)
 				buildingModel.Transform = buildingTransform
 				setAlbedoColor(&buildingModel, rl.Blue)
 				chunk.Models = append(chunk.Models, buildingModel)
+				// Add collider – using a radius appropriate for a building.
+				addCollider(rl.Vector3{X: bx, Y: 25, Z: bz}, 5)
 			}
 		}
-	case Commercial:
+	}
+
+	// Commercial: Spawn stores similarly.
+	if chunk.Type == Commercial {
 		for k := 0; k < 3; k++ {
 			sx := posX + chunkRand.Float32()*CHUNK_SIZE
 			sz := posZ + chunkRand.Float32()*CHUNK_SIZE
-			if float32(math.Abs(float64(sx-(posX+CHUNK_SIZE/2)))) > roadWidth &&
-				float32(math.Abs(float64(sz-(posZ+CHUNK_SIZE/2)))) > roadWidth {
+			if math.Abs(float64(sx-(posX+CHUNK_SIZE/2))) > float64(roadWidth) &&
+				math.Abs(float64(sz-(posZ+CHUNK_SIZE/2))) > float64(roadWidth) {
 				storeMesh := rl.GenMeshCube(15, 10, 15)
 				storeModel := rl.LoadModelFromMesh(storeMesh)
 				storeTransform := rl.MatrixTranslate(sx, 5, sz)
 				storeModel.Transform = storeTransform
 				setAlbedoColor(&storeModel, rl.Purple)
 				chunk.Models = append(chunk.Models, storeModel)
+				addCollider(rl.Vector3{X: sx, Y: 5, Z: sz}, 5)
 			}
 		}
-	case Desert:
+	}
+
+	// Desert: Spawn cacti.
+	if chunk.Type == Desert {
 		for k := 0; k < 10; k++ {
 			cx := posX + chunkRand.Float32()*CHUNK_SIZE
 			cz := posZ + chunkRand.Float32()*CHUNK_SIZE
-			cactusMesh := rl.GenMeshCube(1, 5, 1)
-			cactusModel := rl.LoadModelFromMesh(cactusMesh)
-			cactusTransform := rl.MatrixTranslate(cx, 2.5, cz)
-			cactusModel.Transform = cactusTransform
-			setAlbedoColor(&cactusModel, rl.Green)
-			chunk.Models = append(chunk.Models, cactusModel)
+			// Skip if too close to road.
+			if math.Abs(float64(cx-(posX+CHUNK_SIZE/2))) > float64(roadWidth) &&
+				math.Abs(float64(cz-(posZ+CHUNK_SIZE/2))) > float64(roadWidth) {
+				cactusMesh := rl.GenMeshCube(1, 5, 1)
+				cactusModel := rl.LoadModelFromMesh(cactusMesh)
+				cactusTransform := rl.MatrixTranslate(cx, 2.5, cz)
+				cactusModel.Transform = cactusTransform
+				setAlbedoColor(&cactusModel, rl.Green)
+				chunk.Models = append(chunk.Models, cactusModel)
+				addCollider(rl.Vector3{X: cx, Y: 2.5, Z: cz}, 1)
+			}
 		}
-	case Forest:
+	}
+
+	// Forest: Spawn trees.
+	if chunk.Type == Forest {
 		for k := 0; k < 20; k++ {
 			tx := posX + chunkRand.Float32()*CHUNK_SIZE
 			tz := posZ + chunkRand.Float32()*CHUNK_SIZE
-			treeMesh := rl.GenMeshCube(2, 10, 2)
-			treeModel := rl.LoadModelFromMesh(treeMesh)
-			treeTransform := rl.MatrixTranslate(tx, 5, tz)
-			treeModel.Transform = treeTransform
-			setAlbedoColor(&treeModel, rl.DarkGreen)
-			chunk.Models = append(chunk.Models, treeModel)
+			if math.Abs(float64(tx-(posX+CHUNK_SIZE/2))) > float64(roadWidth) &&
+				math.Abs(float64(tz-(posZ+CHUNK_SIZE/2))) > float64(roadWidth) {
+				treeMesh := rl.GenMeshCube(2, 10, 2)
+				treeModel := rl.LoadModelFromMesh(treeMesh)
+				treeTransform := rl.MatrixTranslate(tx, 5, tz)
+				treeModel.Transform = treeTransform
+				setAlbedoColor(&treeModel, rl.DarkGreen)
+				chunk.Models = append(chunk.Models, treeModel)
+				addCollider(rl.Vector3{X: tx, Y: 5, Z: tz}, 2)
+			}
 		}
-	case Snow:
+	}
+
+	// Snow: Spawn igloos.
+	if chunk.Type == Snow {
 		for k := 0; k < 2; k++ {
 			ix := posX + chunkRand.Float32()*CHUNK_SIZE
 			iz := posZ + chunkRand.Float32()*CHUNK_SIZE
-			iglooMesh := rl.GenMeshSphere(5, 16, 16)
-			iglooModel := rl.LoadModelFromMesh(iglooMesh)
-			iglooTransform := rl.MatrixTranslate(ix, 5, iz)
-			iglooModel.Transform = iglooTransform
-			setAlbedoColor(&iglooModel, rl.White)
-			chunk.Models = append(chunk.Models, iglooModel)
+			if math.Abs(float64(ix-(posX+CHUNK_SIZE/2))) > float64(roadWidth) &&
+				math.Abs(float64(iz-(posZ+CHUNK_SIZE/2))) > float64(roadWidth) {
+				iglooMesh := rl.GenMeshSphere(5, 16, 16)
+				iglooModel := rl.LoadModelFromMesh(iglooMesh)
+				iglooTransform := rl.MatrixTranslate(ix, 5, iz)
+				iglooModel.Transform = iglooTransform
+				setAlbedoColor(&iglooModel, rl.White)
+				chunk.Models = append(chunk.Models, iglooModel)
+				addCollider(rl.Vector3{X: ix, Y: 5, Z: iz}, 3)
+			}
 		}
 	}
 
 	chunks[coord] = chunk
 }
 
-// Update the world by generating new chunks if the player has moved into a new chunk.
+// updateWorld generates new chunks as the player moves.
 func updateWorld() {
 	playerChunk := getChunkCoord(car.position)
 	if playerChunk != lastPlayerChunk {
 		dx := playerChunk.X - lastPlayerChunk.X
 		dy := playerChunk.Y - lastPlayerChunk.Y
 
-		// If moved horizontally, generate the new column on the side the player moved to.
 		if dx > 0 {
-			// Moved east; generate column at player's east edge (playerChunk.X + 2)
 			for j := playerChunk.Y - 2; j <= playerChunk.Y+2; j++ {
 				generateChunk(playerChunk.X+2, j)
 			}
 		} else if dx < 0 {
-			// Moved west; generate column at player's west edge (playerChunk.X - 2)
 			for j := playerChunk.Y - 2; j <= playerChunk.Y+2; j++ {
 				generateChunk(playerChunk.X-2, j)
 			}
 		}
-		// If moved vertically, generate the new row on the side the player moved to.
 		if dy > 0 {
-			// Moved south; generate row at player's south edge (playerChunk.Y + 2)
 			for i := playerChunk.X - 2; i <= playerChunk.X+2; i++ {
 				generateChunk(i, playerChunk.Y+2)
 			}
 		} else if dy < 0 {
-			// Moved north; generate row at player's north edge (playerChunk.Y - 2)
 			for i := playerChunk.X - 2; i <= playerChunk.X+2; i++ {
 				generateChunk(i, playerChunk.Y-2)
 			}
@@ -317,16 +332,13 @@ func updateWorld() {
 	}
 }
 
-// Draw the visible 5x5 chunk grid
+// drawWorld renders the visible 5x5 grid of chunks.
 func drawWorld() {
-	// Update the world before drawing
 	updateWorld()
-
 	playerChunk := getChunkCoord(car.position)
 	for i := playerChunk.X - 2; i <= playerChunk.X+2; i++ {
 		for j := playerChunk.Y - 2; j <= playerChunk.Y+2; j++ {
 			coord := Coord{i, j}
-			// If chunk does not exist (should be generated by updateWorld) generate it
 			if _, exists := chunks[coord]; !exists {
 				generateChunk(i, j)
 			}

@@ -31,7 +31,23 @@ func initCar() {
 	}
 }
 
+// checkCollisions returns true if the car collides with any collider.
+func checkCollisions(pos rl.Vector3) bool {
+	for _, c := range colliders {
+		dx := pos.X - c.Position.X
+		dz := pos.Z - c.Position.Z
+		distance := math.Sqrt(float64(dx*dx + dz*dz))
+		// Assuming car collision radius is 1. Adjust as needed.
+		if float32(distance) < (1 + c.Radius) {
+			return true
+		}
+	}
+	return false
+}
+
 func updateCar() {
+	oldPos := car.position // save previous position
+
 	if rl.IsKeyDown(rl.KeyUp) {
 		car.speed += 5 * rl.GetFrameTime()
 		if car.speed > 10 {
@@ -78,6 +94,13 @@ func updateCar() {
 	}
 	car.position.X += forward.X * car.speed * rl.GetFrameTime()
 	car.position.Z += forward.Z * car.speed * rl.GetFrameTime()
+
+	// Check collisions. If collision, revert position and zero speed.
+	if checkCollisions(car.position) {
+		car.position = oldPos
+		car.speed = 0
+	}
+
 	if car.grounded {
 		car.velocity.Y = 0
 	}
