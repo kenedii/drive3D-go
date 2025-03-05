@@ -17,11 +17,12 @@ type Car struct {
 	model    rl.Model
 }
 
-var car Car // Global car variable
+var car Car
 
 func initCar() {
+	// Spawn on road: center of chunk (0,0) is at (CHUNK_SIZE/2, 0, CHUNK_SIZE/2)
 	car = Car{
-		position: rl.Vector3{X: 0, Y: 0, Z: 0},
+		position: rl.Vector3{X: CHUNK_SIZE / 2, Y: 0, Z: CHUNK_SIZE / 2},
 		yaw:      0,
 		pitch:    0,
 		speed:    0,
@@ -31,30 +32,25 @@ func initCar() {
 	}
 }
 
-// checkCollisions returns true if the car collides with any collider.
-func checkCollisions(pos rl.Vector3) bool {
-	for _, c := range colliders {
-		dx := pos.X - c.Position.X
-		dz := pos.Z - c.Position.Z
-		distance := math.Sqrt(float64(dx*dx + dz*dz))
-		// Assuming car collision radius is 1. Adjust as needed.
-		if float32(distance) < (1 + c.Radius) {
-			return true
-		}
-	}
-	return false
-}
-
 func updateCar() {
-	oldPos := car.position // save previous position
+	oldPos := car.position
+
+	// Adjust acceleration multipliers based on road type.
+	chunk := chunks[getChunkCoord(car.position)]
+	accelMultiplier := float32(1.0)
+	steerMultiplier := float32(1.0)
+	if chunk != nil && chunk.RoadType == RoadIce {
+		accelMultiplier = 1.5
+		steerMultiplier = 1.5
+	}
 
 	if rl.IsKeyDown(rl.KeyUp) {
-		car.speed += 5 * rl.GetFrameTime()
+		car.speed += 5 * rl.GetFrameTime() * accelMultiplier
 		if car.speed > 10 {
 			car.speed = 10
 		}
 	} else if rl.IsKeyDown(rl.KeyDown) {
-		car.speed -= 5 * rl.GetFrameTime()
+		car.speed -= 5 * rl.GetFrameTime() * accelMultiplier
 		if car.speed < -5 {
 			car.speed = -5
 		}
@@ -73,12 +69,12 @@ func updateCar() {
 	}
 
 	if rl.IsKeyDown(rl.KeyLeft) {
-		car.steering -= 2 * rl.GetFrameTime()
+		car.steering -= 2 * rl.GetFrameTime() * steerMultiplier
 		if car.steering < -1 {
 			car.steering = -1
 		}
 	} else if rl.IsKeyDown(rl.KeyRight) {
-		car.steering += 2 * rl.GetFrameTime()
+		car.steering += 2 * rl.GetFrameTime() * steerMultiplier
 		if car.steering > 1 {
 			car.steering = 1
 		}
@@ -95,7 +91,6 @@ func updateCar() {
 	car.position.X += forward.X * car.speed * rl.GetFrameTime()
 	car.position.Z += forward.Z * car.speed * rl.GetFrameTime()
 
-	// Check collisions. If collision, revert position and zero speed.
 	if checkCollisions(car.position) {
 		car.position = oldPos
 		car.speed = 0
