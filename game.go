@@ -21,6 +21,9 @@ var showSettingsOverlay bool = false
 // Toggle for displaying the FPS counter.
 var showFPSCounter bool = true
 
+// Toggle for displaying the car's speed in km/h.
+var showSpeedKmh bool = false
+
 func initGame() {
 	currentState = Menu
 	initCar()
@@ -56,20 +59,26 @@ func updateGame() {
 
 		// If settings overlay is open, check its buttons.
 		if showSettingsOverlay {
-			// We'll draw a panel in the center with two buttons.
-			// Button for toggling FPS counter and button for returning to main menu.
+			// We'll draw a panel in the center with three buttons.
+			// Buttons: Toggle FPS, Toggle Speed, and Return to Main Menu.
 			screenW, screenH := rl.GetScreenWidth(), rl.GetScreenHeight()
-			// Define panel rectangle (centered, 300x200)
-			panelX, panelY := float32(screenW/2-150), float32(screenH/2-100)
+			// Define panel rectangle (centered, 300x250)
+			panelX, panelY := float32(screenW/2-150), float32(screenH/2-125)
 			// Button positions relative to panel.
 			toggleFPSX, toggleFPSY := panelX+50, panelY+50
-			returnX, returnY := panelX+50, panelY+120
+			toggleSpeedX, toggleSpeedY := panelX+50, panelY+110
+			returnX, returnY := panelX+50, panelY+170
 
 			if rl.IsMouseButtonPressed(rl.MouseLeftButton) {
 				// Toggle FPS button.
 				if mousePos.X >= toggleFPSX && mousePos.X <= toggleFPSX+200 &&
 					mousePos.Y >= toggleFPSY && mousePos.Y <= toggleFPSY+40 {
 					showFPSCounter = !showFPSCounter
+				}
+				// Toggle Speed button.
+				if mousePos.X >= toggleSpeedX && mousePos.X <= toggleSpeedX+200 &&
+					mousePos.Y >= toggleSpeedY && mousePos.Y <= toggleSpeedY+40 {
+					showSpeedKmh = !showSpeedKmh
 				}
 				// Return to Main Menu button.
 				if mousePos.X >= returnX && mousePos.X <= returnX+200 &&
@@ -113,9 +122,9 @@ func drawGame() {
 		drawCar()
 		rl.EndMode3D()
 
-		// Draw gear icon (a simple square with a gear symbol)
+		// Draw gear icon (a simple square with a gear symbol) in top left.
 		rl.DrawRectangle(10, 10, 40, 40, rl.Gray)
-		rl.DrawText("⚙", 20, 10, 32, rl.Black) // You can change the symbol if needed.
+		rl.DrawText("⚙", 20, 10, 32, rl.Black)
 
 		// Draw FPS counter in top right if enabled.
 		if showFPSCounter {
@@ -124,22 +133,37 @@ func drawGame() {
 			rl.DrawText(fpsText, int32(screenW)-100, 10, 20, rl.Black)
 		}
 
+		// Draw car speed (in km/h) in top left below gear icon if enabled.
+		if showSpeedKmh {
+			speedKmh := car.speed * 3.6
+			speedText := fmt.Sprintf("Speed: %.0f km/h", speedKmh)
+			rl.DrawText(speedText, 10, 60, 20, rl.Black)
+		}
+
 		// If settings overlay is open, draw it.
 		if showSettingsOverlay {
 			screenW, screenH := rl.GetScreenWidth(), rl.GetScreenHeight()
-			panelX, panelY := (screenW-300)/2, (screenH-200)/2
-			rl.DrawRectangle(int32(panelX), int32(panelY), 300, 200, rl.Fade(rl.LightGray, 0.9))
-			rl.DrawText("Settings", int32(panelX+100), int32(panelY+20), 30, rl.Black)
+			panelX, panelY := (screenW-300)/2, (screenH-250)/2
+			rl.DrawRectangle(int32(panelX), int32(panelY), 300, 250, rl.Fade(rl.LightGray, 0.9))
+			rl.DrawText("Settings", int32(panelX+100), int32(panelY+30), 30, rl.Black)
 			// Toggle FPS button.
-			toggleFPSX, toggleFPSY := panelX+50, panelY+50
+			toggleFPSX, toggleFPSY := panelX+50, panelY+70
 			rl.DrawRectangle(int32(toggleFPSX), int32(toggleFPSY), 200, 40, rl.Gray)
-			toggleText := "FPS: OFF"
+			toggleFPSText := "FPS: OFF"
 			if showFPSCounter {
-				toggleText = "FPS: ON"
+				toggleFPSText = "FPS: ON"
 			}
-			rl.DrawText(toggleText, int32(toggleFPSX+60), int32(toggleFPSY+10), 20, rl.Black)
+			rl.DrawText(toggleFPSText, int32(toggleFPSX+60), int32(toggleFPSY+10), 20, rl.Black)
+			// Toggle Speed button.
+			toggleSpeedX, toggleSpeedY := panelX+50, panelY+130
+			rl.DrawRectangle(int32(toggleSpeedX), int32(toggleSpeedY), 200, 40, rl.Gray)
+			toggleSpeedText := "Speed: OFF"
+			if showSpeedKmh {
+				toggleSpeedText = "Speed: ON"
+			}
+			rl.DrawText(toggleSpeedText, int32(toggleSpeedX+50), int32(toggleSpeedY+10), 20, rl.Black)
 			// Return to Main Menu button.
-			returnX, returnY := panelX+50, panelY+120
+			returnX, returnY := panelX+50, panelY+190
 			rl.DrawRectangle(int32(returnX), int32(returnY), 200, 40, rl.Gray)
 			rl.DrawText("Return to Main Menu", int32(returnX+10), int32(returnY+10), 20, rl.Black)
 		}
