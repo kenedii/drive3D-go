@@ -46,7 +46,7 @@ func updateGame() {
 			}
 		}
 	case Playing:
-		// In-game, first update settings overlay UI:
+		// In-game, update settings overlay UI:
 		mousePos := rl.GetMousePosition()
 		// Gear icon area (top left 40x40)
 		if rl.IsMouseButtonPressed(rl.MouseLeftButton) {
@@ -59,15 +59,13 @@ func updateGame() {
 
 		// If settings overlay is open, check its buttons.
 		if showSettingsOverlay {
-			// We'll draw a panel in the center with three buttons.
-			// Buttons: Toggle FPS, Toggle Speed, and Return to Main Menu.
 			screenW, screenH := rl.GetScreenWidth(), rl.GetScreenHeight()
-			// Define panel rectangle (centered, 300x250)
+			// Panel (centered, 300x250)
 			panelX, panelY := float32(screenW/2-150), float32(screenH/2-125)
 			// Button positions relative to panel.
-			toggleFPSX, toggleFPSY := panelX+50, panelY+50
-			toggleSpeedX, toggleSpeedY := panelX+50, panelY+110
-			returnX, returnY := panelX+50, panelY+170
+			toggleFPSX, toggleFPSY := panelX+50, panelY+70
+			toggleSpeedX, toggleSpeedY := panelX+50, panelY+130
+			returnX, returnY := panelX+50, panelY+190
 
 			if rl.IsMouseButtonPressed(rl.MouseLeftButton) {
 				// Toggle FPS button.
@@ -84,12 +82,10 @@ func updateGame() {
 				if mousePos.X >= returnX && mousePos.X <= returnX+200 &&
 					mousePos.Y >= returnY && mousePos.Y <= returnY+40 {
 					currentState = Menu
-					// Reset in-game state.
 					showSettingsOverlay = false
 				}
 			}
 		} else {
-			// Only update car if settings overlay is not open.
 			updateCar()
 		}
 	}
@@ -105,7 +101,6 @@ func drawGame() {
 		rl.DrawText("Play", int32(playX+70), int32(playY+10), 30, rl.Black)
 	case Playing:
 		rl.ClearBackground(rl.SkyBlue)
-		// Set up camera.
 		camera := rl.Camera3D{
 			Position: rl.Vector3{
 				X: car.position.X - 5,
@@ -122,32 +117,28 @@ func drawGame() {
 		drawCar()
 		rl.EndMode3D()
 
-		// Draw gear icon (a simple square with a gear symbol) in top left.
+		// Draw gear icon (simple square with gear symbol) in top left.
 		rl.DrawRectangle(10, 10, 40, 40, rl.Gray)
 		rl.DrawText("⚙", 20, 10, 32, rl.Black)
 
-		// Draw FPS counter in the top right if enabled.
+		// Draw FPS counter in top right if enabled.
 		screenW := rl.GetScreenWidth()
-		textPadding := int32(160) // Padding from right edge.
-
 		if showFPSCounter {
 			fpsText := fmt.Sprintf("FPS: %d", rl.GetFPS())
-			rl.DrawText(fpsText, int32(screenW)-textPadding, 10, 20, rl.Black)
-
+			rl.DrawText(fpsText, int32(screenW)-140, 10, 20, rl.Black)
 			// If speed display is enabled, draw it below the FPS.
 			if showSpeedKmh {
 				speedKmh := car.speed * 3.6
 				speedText := fmt.Sprintf("Speed: %.0f km/h", speedKmh)
-				rl.DrawText(speedText, int32(screenW)-textPadding, 35, 20, rl.Black)
+				rl.DrawText(speedText, int32(screenW)-140, 35, 20, rl.Black)
 			}
 		} else if showSpeedKmh {
-			// If FPS is disabled but speed is enabled, draw speed at top right.
 			speedKmh := car.speed * 3.6
 			speedText := fmt.Sprintf("Speed: %.0f km/h", speedKmh)
-			rl.DrawText(speedText, int32(screenW)-textPadding, 10, 20, rl.Black)
+			rl.DrawText(speedText, int32(screenW)-140, 10, 20, rl.Black)
 		}
 
-		// If settings overlay is open, draw it.
+		// Draw settings overlay if open.
 		if showSettingsOverlay {
 			screenW, screenH := rl.GetScreenWidth(), rl.GetScreenHeight()
 			panelX, panelY := (screenW-300)/2, (screenH-250)/2
