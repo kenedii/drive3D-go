@@ -126,18 +126,25 @@ func drawGame() {
 		rl.DrawRectangle(10, 10, 40, 40, rl.Gray)
 		rl.DrawText("⚙", 20, 10, 32, rl.Black)
 
-		// Draw FPS counter in top right if enabled.
+		// Draw FPS counter in the top right if enabled.
+		screenW := rl.GetScreenWidth()
+		textPadding := int32(160) // Padding from right edge.
+
 		if showFPSCounter {
 			fpsText := fmt.Sprintf("FPS: %d", rl.GetFPS())
-			screenW := rl.GetScreenWidth()
-			rl.DrawText(fpsText, int32(screenW)-100, 10, 20, rl.Black)
-		}
+			rl.DrawText(fpsText, int32(screenW)-textPadding, 10, 20, rl.Black)
 
-		// Draw car speed (in km/h) in top left below gear icon if enabled.
-		if showSpeedKmh {
+			// If speed display is enabled, draw it below the FPS.
+			if showSpeedKmh {
+				speedKmh := car.speed * 3.6
+				speedText := fmt.Sprintf("Speed: %.0f km/h", speedKmh)
+				rl.DrawText(speedText, int32(screenW)-textPadding, 35, 20, rl.Black)
+			}
+		} else if showSpeedKmh {
+			// If FPS is disabled but speed is enabled, draw speed at top right.
 			speedKmh := car.speed * 3.6
 			speedText := fmt.Sprintf("Speed: %.0f km/h", speedKmh)
-			rl.DrawText(speedText, 10, 60, 20, rl.Black)
+			rl.DrawText(speedText, int32(screenW)-textPadding, 10, 20, rl.Black)
 		}
 
 		// If settings overlay is open, draw it.
