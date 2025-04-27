@@ -8,4 +8,5 @@ Other features include:
 - Different landscapes and buildings
 - Car speeds up when driving over ice
 
-![image](https://github.com/user-attachments/assets/48beda5b-c589-49bb-9970-fac988960e69)
+
+![demo](https://github.com/user-attachments/assets/d8e43cf8-a79c-419e-bd89-fa57dfb9dbc4)
