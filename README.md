@@ -1,7 +1,7 @@
 # drive3D-go
 Simple 3D driving game with procedural world generation made in Golang.
 
-Includes different landscapes, such as desert, highway, dirt roat city, ice.
+Includes different landscapes, such as desert, highway, dirt road, city, ice.
 
 Other features include:
 - FPS/Speed toggle in Settings
