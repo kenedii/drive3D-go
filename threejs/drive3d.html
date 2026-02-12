@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>drive3D (Web)</title>
+  <link rel="stylesheet" href="drive3d.css" />
+</head>
+<body>
+  <div id="ui">
+    <button id="btn-play">Play</button>
+    <button id="btn-settings">⚙</button>
+    <button id="about-btn" title="About this port">?</button>
+    <div id="hud" style="display:none">
+      <div id="fps">FPS: --</div>
+      <div id="speed">Speed: 0 km/h</div>
+      <div id="debug" style="font-size:12px;margin-top:6px;color:#333;">
+        <span id="dbg-chunks">Chunks: 0</span>
+        <span style="margin-left:8px" id="dbg-coll">Collisions: 0</span>
+      </div>
+    </div>
+    <div id="settings" style="display:none">
+      <label><input id="toggle-fps" type="checkbox" checked/> Show FPS</label>
+      <label><input id="toggle-speed" type="checkbox"/> Show Speed</label>
+      <button id="btn-return">Return to Menu</button>
+    </div>
+  </div>
+
+  <div id="menu" class="overlay">
+    <h1>drive3D (Web)</h1>
+    <button id="menu-play">Play</button>
+  </div>
+
+  <div id="about-modal" class="overlay" style="display:none; z-index:30;">
+    <div style="background:white;padding:18px;border-radius:8px;max-width:720px;">
+      <h2 style="margin-top:0">About this port</h2>
+      <p>This demo is a browser re-implementation of the original Go-based <code>drive3D</code> project. The native Go raylib renderer wasn't portable to the browser, so I recreated the gameplay and procedural chunk logic in Three.js (client-side JavaScript) using the same world-generation ideas and seeded randomness.</p>
+      <p>Source of the original Go project: <a href="https://github.com/kenedii/drive3D-go" target="_blank" rel="noreferrer">https://github.com/kenedii/drive3D-go</a></p>
+      <div style="text-align:right;margin-top:12px;"><button id="about-close">Close</button></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/three@0.154.0/build/three.min.js"></script>
+  <script src="drive3d.js"></script>
+  <script>
+    document.getElementById('about-btn').addEventListener('click', ()=>{
+      document.getElementById('about-modal').style.display='flex';
+    });
+    document.getElementById('about-close').addEventListener('click', ()=>{
+      document.getElementById('about-modal').style.display='none';
+    });
+  </script>
+</body>
+</html>
